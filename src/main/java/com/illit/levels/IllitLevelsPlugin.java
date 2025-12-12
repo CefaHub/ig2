@@ -33,7 +33,7 @@ public final class IllitLevelsPlugin extends JavaPlugin {
             }
         }, autosaveSeconds * 20L, autosaveSeconds * 20L);
 
-        getLogger().info("IllitLevels enabled.");
+        getLogger().info("IllitLevels включён.");
     }
 
     @Override
@@ -46,6 +46,6 @@ public final class IllitLevelsPlugin extends JavaPlugin {
         } catch (Exception e) {
             getLogger().warning("Final save failed: " + e.getMessage());
         }
-        getLogger().info("IllitLevels disabled.");
+        getLogger().info("IllitLevels выключен.");
     }
 }
