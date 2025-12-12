@@ -1,5 +1,5 @@
 name: IllitLevels
-version: 1.0.0
+version: 1.1.0
 main: com.illit.levels.IllitLevelsPlugin
 api-version: '1.16'
 author: Illit
@@ -7,7 +7,7 @@ depend: [PlaceholderAPI]
 
 commands:
   illit:
-    description: Manage IllitLevels
+    description: IllitLevels main command
     usage: /<command> help
     permission: illit.admin
 

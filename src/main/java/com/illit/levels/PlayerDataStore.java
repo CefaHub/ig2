@@ -39,21 +39,33 @@ public class PlayerDataStore {
         for (String key : yaml.getKeys(false)) {
             try {
                 UUID uuid = UUID.fromString(key);
-                int level = yaml.getInt(key + ".level", 0);
+                int level = yaml.getInt(key + ".level", 1);
                 long exp = yaml.getLong(key + ".exp", 0L);
-                cache.put(uuid, new PlayerProgress(level, exp));
+                String name = yaml.getString(key + ".name", null);
+                cache.put(uuid, new PlayerProgress(level, exp, name));
             } catch (IllegalArgumentException ignored) {
-                // skip invalid keys
             }
         }
     }
 
     public PlayerProgress get(UUID uuid) {
-        return cache.computeIfAbsent(uuid, (u) -> new PlayerProgress(1, 0));
+        return cache.computeIfAbsent(uuid, (u) -> new PlayerProgress(1, 0, null));
     }
 
     public void put(UUID uuid, PlayerProgress progress) {
         cache.put(uuid, progress);
+    }
+
+    public void setName(UUID uuid, String name) {
+        if (name == null || name.isBlank()) return;
+        PlayerProgress p = get(uuid);
+        if (name.equals(p.name())) return;
+        cache.put(uuid, new PlayerProgress(p.level(), p.exp(), name));
+        markDirty(uuid);
+    }
+
+    public Map<UUID, PlayerProgress> snapshotAll() {
+        return new HashMap<>(cache);
     }
 
     public void markDirty(UUID uuid) {
@@ -61,7 +73,6 @@ public class PlayerDataStore {
     }
 
     public void saveAll() {
-        // Save only dirty to reduce IO
         synchronized (dirty) {
             for (UUID uuid : dirty) {
                 PlayerProgress p = cache.get(uuid);
@@ -69,6 +80,7 @@ public class PlayerDataStore {
                 String key = uuid.toString();
                 yaml.set(key + ".level", p.level());
                 yaml.set(key + ".exp", p.exp());
+                if (p.name() != null) yaml.set(key + ".name", p.name());
             }
             dirty.clear();
         }

@@ -7,6 +7,7 @@ public final class IllitLevelsPlugin extends JavaPlugin {
 
     private PlayerDataStore dataStore;
     private LevelService levelService;
+    private TopService topService;
     private int autosaveTaskId = -1;
 
     @Override
@@ -15,16 +16,14 @@ public final class IllitLevelsPlugin extends JavaPlugin {
 
         this.dataStore = new PlayerDataStore(this);
         this.levelService = new LevelService(this, dataStore);
+        this.topService = new TopService(this, dataStore);
 
-        // Command
-        IllitCommand cmd = new IllitCommand(this, levelService);
+        IllitCommand cmd = new IllitCommand(levelService, topService);
         getCommand("illit").setExecutor(cmd);
         getCommand("illit").setTabCompleter(cmd);
 
-        // PlaceholderAPI expansion (depend is declared in plugin.yml, so PAPI must be present)
-        new IllitPlaceholders(this, levelService).register();
+        new IllitPlaceholders(this, levelService, topService).register();
 
-        // Autosave
         int autosaveSeconds = Math.max(10, getConfig().getInt("storage.autosave-seconds", 60));
         autosaveTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(this, () -> {
             try {

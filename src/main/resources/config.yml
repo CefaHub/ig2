@@ -6,9 +6,6 @@ max-level: 100
 # EXP needed to reach level 2 from level 1
 base-exp: 100
 
-# "Complex percent" growth model:
-# requiredExp(level) = round(base-exp * growthMultiplier(level))
-# where growthMultiplier grows non-linearly and becomes much harder for the last 10 levels.
 growth:
   base-mult: 1.085
   sqrt-coef: 0.0025
@@ -22,3 +19,11 @@ endgame:
 
 storage:
   autosave-seconds: 60
+
+top:
+  cache-seconds: 15
+
+format:
+  bar-length: 10
+  bar-filled: "█"
+  bar-empty: "░"

@@ -40,22 +40,33 @@ public class LevelService {
         this.endgameExpCoef = c.getDouble("endgame.exp-coef", 0.020);
     }
 
-    public int getLevel(UUID uuid) {
-        return store.get(uuid).level();
-    }
+    public void setName(UUID uuid, String name) { store.setName(uuid, name); }
 
-    public long getExp(UUID uuid) {
-        return store.get(uuid).exp();
-    }
+    public int getLevel(UUID uuid) { return store.get(uuid).level(); }
+    public long getExp(UUID uuid) { return store.get(uuid).exp(); }
+
+    public int getMinLevel() { return minLevel; }
+    public int getMaxLevel() { return maxLevel; }
 
     public void reset(UUID uuid) {
-        store.put(uuid, new PlayerProgress(minLevel, 0));
+        PlayerProgress p = store.get(uuid);
+        store.put(uuid, new PlayerProgress(minLevel, 0, p.name()));
         store.markDirty(uuid);
     }
 
     public void setLevel(UUID uuid, int level) {
+        PlayerProgress p = store.get(uuid);
         int clamped = clamp(level, minLevel, maxLevel);
-        store.put(uuid, new PlayerProgress(clamped, 0));
+        store.put(uuid, new PlayerProgress(clamped, 0, p.name()));
+        store.markDirty(uuid);
+    }
+
+    public void setExp(UUID uuid, long exp) {
+        PlayerProgress p = store.get(uuid);
+        int level = clamp(p.level(), minLevel, maxLevel);
+        long v = Math.max(0, exp);
+        if (level >= maxLevel) v = 0;
+        store.put(uuid, new PlayerProgress(level, v, p.name()));
         store.markDirty(uuid);
     }
 
@@ -65,9 +76,10 @@ public class LevelService {
         PlayerProgress p = store.get(uuid);
         int level = clamp(p.level(), minLevel, maxLevel);
         long exp = Math.max(0, p.exp());
+        String name = p.name();
 
         if (level >= maxLevel) {
-            store.put(uuid, new PlayerProgress(maxLevel, 0));
+            store.put(uuid, new PlayerProgress(maxLevel, 0, name));
             store.markDirty(uuid);
             return new LevelUpResult(0, false);
         }
@@ -91,7 +103,7 @@ public class LevelService {
             } else break;
         }
 
-        store.put(uuid, new PlayerProgress(level, exp));
+        store.put(uuid, new PlayerProgress(level, exp, name));
         store.markDirty(uuid);
         return new LevelUpResult(gained, reachedMax);
     }
@@ -102,6 +114,7 @@ public class LevelService {
         PlayerProgress p = store.get(uuid);
         int level = clamp(p.level(), minLevel, maxLevel);
         long exp = Math.max(0, p.exp());
+        String name = p.name();
 
         int lost = 0;
         boolean hitMin = false;
@@ -133,7 +146,7 @@ public class LevelService {
 
         if (level >= maxLevel) exp = 0;
 
-        store.put(uuid, new PlayerProgress(level, exp));
+        store.put(uuid, new PlayerProgress(level, exp, name));
         store.markDirty(uuid);
 
         return new LevelDownResult(lost, hitMin);
@@ -144,7 +157,7 @@ public class LevelService {
         PlayerProgress p = store.get(uuid);
         int before = clamp(p.level(), minLevel, maxLevel);
         int after = clamp(before + amount, minLevel, maxLevel);
-        store.put(uuid, new PlayerProgress(after, 0));
+        store.put(uuid, new PlayerProgress(after, 0, p.name()));
         store.markDirty(uuid);
         return new LevelChangeResult(after - before, after >= maxLevel);
     }
@@ -154,7 +167,7 @@ public class LevelService {
         PlayerProgress p = store.get(uuid);
         int before = clamp(p.level(), minLevel, maxLevel);
         int after = clamp(before - amount, minLevel, maxLevel);
-        store.put(uuid, new PlayerProgress(after, 0));
+        store.put(uuid, new PlayerProgress(after, 0, p.name()));
         store.markDirty(uuid);
         return new LevelChangeResult(before - after, after <= minLevel);
     }
@@ -183,14 +196,6 @@ public class LevelService {
         return required;
     }
 
-    public int getMinLevel() {
-        return minLevel;
-    }
-
-    public int getMaxLevel() {
-        return maxLevel;
-    }
-
     public int getNextLevel(UUID uuid) {
         int level = getLevel(uuid);
         return Math.min(level + 1, maxLevel);
@@ -204,9 +209,7 @@ public class LevelService {
         return Math.max(0, need - cur);
     }
 
-    public int clamp(int v, int min, int max) {
-        return Math.max(min, Math.min(max, v));
-    }
+    public int clamp(int v, int min, int max) { return Math.max(min, Math.min(max, v)); }
 
     public int getLevel(OfflinePlayer player) {
         if (player == null) return minLevel;

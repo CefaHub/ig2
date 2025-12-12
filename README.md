@@ -1,32 +1,33 @@
-# IllitLevels
+# IllitLevels (v1.1.0)
 
-Custom level/exp system (1..100) with a non-linear growth curve and a very hard last 10 levels.
-Includes PlaceholderAPI placeholders:
+Commands:
+- /illit lvl give <nick> <amount>
+- /illit lvl remove <nick> <amount>
+- /illit lvl set <nick> <level>
+- /illit exp give <nick> <amount>
+- /illit exp remove <nick> <amount>
+- /illit exp set <nick> <amount>
+- /illit top
+- /illit info [nick]
+- /illit reset <nick>
 
+PlaceholderAPI identifier: illit
+
+Required:
 - %illit_level%
 - %illit_exp%
 - %illit_level_next%
 - %illit_exp_next%
 
-## Build
-Java 17 + Maven:
+Formatted:
+- %illit_level_format%
+- %illit_exp_format%
+- %illit_progress_percent%
+- %illit_progress_bar%
 
-```bash
+Top 10:
+- %illit_top_1_name% ... %illit_top_10_name%
+- %illit_top_1_level% ... %illit_top_10_level%
+
+Build:
 mvn -q clean package
-```
-
-Jar will be in `target/IllitLevels-1.0.0.jar`.
-
-## Commands
-- /illit lvl give <nick> <amount>
-- /illit lvl remove <nick> <amount>
-- /illit exp give <nick> <amount>
-- /illit exp remove <nick> <amount>
-- /illit info [nick]
-- /illit reset <nick>
-
-## PlaceholderAPI
-Expansion identifier: `illit`
-
-Use in configs/chat:
-`%illit_level%`, `%illit_exp%`, `%illit_level_next%`, `%illit_exp_next%`
