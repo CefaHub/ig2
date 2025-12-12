@@ -7,9 +7,9 @@ import java.util.UUID;
 
 public class LevelService {
 
-    private final IllitLevelsPlugin plugin;
     private final PlayerDataStore store;
 
+    private final int minLevel;
     private final int maxLevel;
     private final int baseExp;
 
@@ -23,11 +23,11 @@ public class LevelService {
     private final double endgameExpCoef;
 
     public LevelService(IllitLevelsPlugin plugin, PlayerDataStore store) {
-        this.plugin = plugin;
         this.store = store;
 
         FileConfiguration c = plugin.getConfig();
-        this.maxLevel = Math.max(1, c.getInt("max-level", 100));
+        this.minLevel = Math.max(1, c.getInt("min-level", 1));
+        this.maxLevel = Math.max(this.minLevel, c.getInt("max-level", 100));
         this.baseExp = Math.max(1, c.getInt("base-exp", 100));
 
         this.growthBaseMult = c.getDouble("growth.base-mult", 1.085);
@@ -40,10 +40,6 @@ public class LevelService {
         this.endgameExpCoef = c.getDouble("endgame.exp-coef", 0.020);
     }
 
-    public PlayerProgress getProgress(UUID uuid) {
-        return store.get(uuid);
-    }
-
     public int getLevel(UUID uuid) {
         return store.get(uuid).level();
     }
@@ -52,102 +48,147 @@ public class LevelService {
         return store.get(uuid).exp();
     }
 
+    public void reset(UUID uuid) {
+        store.put(uuid, new PlayerProgress(minLevel, 0));
+        store.markDirty(uuid);
+    }
+
     public void setLevel(UUID uuid, int level) {
-        PlayerProgress p = store.get(uuid);
-        int clamped = clamp(level, 0, maxLevel);
+        int clamped = clamp(level, minLevel, maxLevel);
         store.put(uuid, new PlayerProgress(clamped, 0));
         store.markDirty(uuid);
     }
 
-    public void reset(UUID uuid) {
-        store.put(uuid, new PlayerProgress(0, 0));
-        store.markDirty(uuid);
-    }
-
-    /**
-     * Adds exp (non-negative). Levels up as needed until maxLevel.
-     */
     public LevelUpResult addExp(UUID uuid, long amount) {
         if (amount <= 0) return new LevelUpResult(0, false);
 
         PlayerProgress p = store.get(uuid);
-        int level = p.level();
-        long exp = p.exp();
+        int level = clamp(p.level(), minLevel, maxLevel);
+        long exp = Math.max(0, p.exp());
 
         if (level >= maxLevel) {
-            // already max, do nothing
+            store.put(uuid, new PlayerProgress(maxLevel, 0));
+            store.markDirty(uuid);
             return new LevelUpResult(0, false);
         }
 
         exp += amount;
 
-        int levelsGained = 0;
+        int gained = 0;
         boolean reachedMax = false;
 
         while (level < maxLevel) {
             long need = getRequiredExpForNextLevel(level);
-            if (need <= 0) break;
-
             if (exp >= need) {
                 exp -= need;
                 level++;
-                levelsGained++;
+                gained++;
                 if (level >= maxLevel) {
                     exp = 0;
                     reachedMax = true;
                     break;
                 }
-            } else {
-                break;
-            }
+            } else break;
         }
 
         store.put(uuid, new PlayerProgress(level, exp));
         store.markDirty(uuid);
-
-        return new LevelUpResult(levelsGained, reachedMax);
+        return new LevelUpResult(gained, reachedMax);
     }
 
-    /**
-     * Required exp to go from currentLevel -> currentLevel+1.
-     * For level 0 -> 1, this will be baseExp.
-     * If currentLevel >= maxLevel, returns 0.
-     */
+    public LevelDownResult removeExp(UUID uuid, long amount) {
+        if (amount <= 0) return new LevelDownResult(0, false);
+
+        PlayerProgress p = store.get(uuid);
+        int level = clamp(p.level(), minLevel, maxLevel);
+        long exp = Math.max(0, p.exp());
+
+        int lost = 0;
+        boolean hitMin = false;
+
+        long remaining = amount;
+
+        while (remaining > 0) {
+            if (remaining <= exp) {
+                exp -= remaining;
+                remaining = 0;
+                break;
+            }
+
+            remaining -= exp;
+            exp = 0;
+
+            if (level <= minLevel) {
+                hitMin = true;
+                remaining = 0;
+                break;
+            }
+
+            level--;
+            lost++;
+
+            long bar = getRequiredExpForNextLevel(level);
+            exp = Math.max(0, bar);
+        }
+
+        if (level >= maxLevel) exp = 0;
+
+        store.put(uuid, new PlayerProgress(level, exp));
+        store.markDirty(uuid);
+
+        return new LevelDownResult(lost, hitMin);
+    }
+
+    public LevelChangeResult addLevels(UUID uuid, int amount) {
+        if (amount <= 0) return new LevelChangeResult(0, false);
+        PlayerProgress p = store.get(uuid);
+        int before = clamp(p.level(), minLevel, maxLevel);
+        int after = clamp(before + amount, minLevel, maxLevel);
+        store.put(uuid, new PlayerProgress(after, 0));
+        store.markDirty(uuid);
+        return new LevelChangeResult(after - before, after >= maxLevel);
+    }
+
+    public LevelChangeResult removeLevels(UUID uuid, int amount) {
+        if (amount <= 0) return new LevelChangeResult(0, false);
+        PlayerProgress p = store.get(uuid);
+        int before = clamp(p.level(), minLevel, maxLevel);
+        int after = clamp(before - amount, minLevel, maxLevel);
+        store.put(uuid, new PlayerProgress(after, 0));
+        store.markDirty(uuid);
+        return new LevelChangeResult(before - after, after <= minLevel);
+    }
+
     public long getRequiredExpForNextLevel(int currentLevel) {
         if (currentLevel >= maxLevel) return 0;
 
         int nextLevel = currentLevel + 1;
-        // Growth factor is based on nextLevel to make "each new level harder".
-        double lvl = (double) nextLevel;
 
-        // Complex growth:
-        // baseline growthBaseMult^(lvl-1) * (1 + sqrtCoef*sqrt(lvl) + linearCoef*lvl)
-        double expFactor = Math.pow(growthBaseMult, Math.max(0.0, lvl - 1.0));
-        double bump = 1.0 + growthSqrtCoef * Math.sqrt(lvl) + growthLinearCoef * lvl;
+        double x = (double) (nextLevel - minLevel);
+        if (x < 1.0) x = 1.0;
+
+        double expFactor = Math.pow(growthBaseMult, Math.max(0.0, x - 1.0));
+        double bump = 1.0 + growthSqrtCoef * Math.sqrt(x) + growthLinearCoef * x;
         double factor = expFactor * bump;
 
-        // Endgame difficulty for last 10 levels (>= threshold)
         if (nextLevel >= endgameThreshold) {
-            double k = (lvl - endgameThreshold + 1.0); // starts at 1
-            double quad = 1.0 + endgameQuadCoef * (k * k);      // quadratic spike
-            double extraExp = Math.exp(endgameExpCoef * k);     // exponential spike
+            double k = (nextLevel - endgameThreshold + 1.0);
+            double quad = 1.0 + endgameQuadCoef * (k * k);
+            double extraExp = Math.exp(endgameExpCoef * k);
             factor = factor * endgameHardMult * quad * extraExp;
         }
 
         long required = Math.max(1L, Math.round(baseExp * factor));
-
-        // Safety: prevent overflow in pathological configs
         if (required < 0) required = Long.MAX_VALUE / 4;
-
         return required;
+    }
+
+    public int getMinLevel() {
+        return minLevel;
     }
 
     public int getMaxLevel() {
         return maxLevel;
-    }
-
-    public int clamp(int v, int min, int max) {
-        return Math.max(min, Math.min(max, v));
     }
 
     public int getNextLevel(UUID uuid) {
@@ -163,9 +204,12 @@ public class LevelService {
         return Math.max(0, need - cur);
     }
 
-    // Convenience overloads for placeholders
+    public int clamp(int v, int min, int max) {
+        return Math.max(min, Math.min(max, v));
+    }
+
     public int getLevel(OfflinePlayer player) {
-        if (player == null) return 0;
+        if (player == null) return minLevel;
         return getLevel(player.getUniqueId());
     }
 
@@ -175,12 +219,12 @@ public class LevelService {
     }
 
     public int getNextLevel(OfflinePlayer player) {
-        if (player == null) return 1;
+        if (player == null) return minLevel + 1;
         return getNextLevel(player.getUniqueId());
     }
 
     public long getExpToNext(OfflinePlayer player) {
-        if (player == null) return getRequiredExpForNextLevel(0);
+        if (player == null) return getRequiredExpForNextLevel(minLevel);
         return getExpToNext(player.getUniqueId());
     }
 }

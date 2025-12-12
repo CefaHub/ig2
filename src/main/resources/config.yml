@@ -1,31 +1,23 @@
 # IllitLevels config
-# Level range: 0..100 (100 is max)
+# Level range: 1..100 (100 is max). Minimum is 1.
+min-level: 1
 max-level: 100
 
-# EXP needed to reach level 1 from level 0
+# EXP needed to reach level 2 from level 1
 base-exp: 100
 
 # "Complex percent" growth model:
 # requiredExp(level) = round(base-exp * growthMultiplier(level))
 # where growthMultiplier grows non-linearly and becomes much harder for the last 10 levels.
-#
-# You can tune these coefficients:
 growth:
-  # baseline multiplier increment
   base-mult: 1.085
-  # adds a small non-linear bump using sqrt(level)
   sqrt-coef: 0.0025
-  # adds a gradual linear bump
   linear-coef: 0.0009
 
 endgame:
-  # when level >= this threshold, apply additional endgame difficulty
   threshold: 90
-  # extra multiplier (applied on top) for endgame levels
   hard-mult: 1.45
-  # quadratic penalty coefficient for levels >= threshold
   quad-coef: 0.010
-  # extra exponential penalty coefficient for levels >= threshold
   exp-coef: 0.020
 
 storage:

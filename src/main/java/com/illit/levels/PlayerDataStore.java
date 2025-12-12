@@ -49,7 +49,7 @@ public class PlayerDataStore {
     }
 
     public PlayerProgress get(UUID uuid) {
-        return cache.computeIfAbsent(uuid, (u) -> new PlayerProgress(0, 0));
+        return cache.computeIfAbsent(uuid, (u) -> new PlayerProgress(1, 0));
     }
 
     public void put(UUID uuid, PlayerProgress progress) {

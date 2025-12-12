@@ -1,6 +1,6 @@
 # IllitLevels
 
-Custom level/exp system (0..100) with a non-linear growth curve and a very hard last 10 levels.
+Custom level/exp system (1..100) with a non-linear growth curve and a very hard last 10 levels.
 Includes PlaceholderAPI placeholders:
 
 - %illit_level%
@@ -9,25 +9,24 @@ Includes PlaceholderAPI placeholders:
 - %illit_exp_next%
 
 ## Build
-Requirements: Java 17, Maven.
+Java 17 + Maven:
 
 ```bash
 mvn -q clean package
 ```
 
-The jar will be in:
-`target/IllitLevels-1.0.0.jar`
+Jar will be in `target/IllitLevels-1.0.0.jar`.
 
-## Install
-1) Put `IllitLevels-1.0.0.jar` into `plugins/`
-2) Make sure `PlaceholderAPI` is installed.
-3) Restart the server.
+## Commands
+- /illit lvl give <nick> <amount>
+- /illit lvl remove <nick> <amount>
+- /illit exp give <nick> <amount>
+- /illit exp remove <nick> <amount>
+- /illit info [nick]
+- /illit reset <nick>
 
-## Admin commands
-- /illit addexp <player> <amount>
-- /illit setlevel <player> <level>
-- /illit reset <player>
-- /illit info [player]
+## PlaceholderAPI
+Expansion identifier: `illit`
 
-## Tuning
-Edit `plugins/IllitLevels/config.yml` (growth & endgame coefficients).
+Use in configs/chat:
+`%illit_level%`, `%illit_exp%`, `%illit_level_next%`, `%illit_exp_next%`
