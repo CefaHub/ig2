@@ -1,0 +1,29 @@
+# IllitLevels config
+# Level range: 1..100 (100 is max). Minimum is 1.
+min-level: 1
+max-level: 100
+
+# EXP needed to reach level 2 from level 1
+base-exp: 100
+
+growth:
+  base-mult: 1.085
+  sqrt-coef: 0.0025
+  linear-coef: 0.0009
+
+endgame:
+  threshold: 90
+  hard-mult: 1.45
+  quad-coef: 0.010
+  exp-coef: 0.020
+
+storage:
+  autosave-seconds: 60
+
+top:
+  cache-seconds: 15
+
+format:
+  bar-length: 10
+  bar-filled: "█"
+  bar-empty: "░"
